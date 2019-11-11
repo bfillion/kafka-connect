@@ -1,0 +1,56 @@
+version: '3.4'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:5.3.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 32181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-enterprise-kafka:5.3.1
+    hostname: kafka-ia-broker1
+    depends_on:
+      - zookeeper
+    volumes:
+      - c:/git/kafka-connect/gen-certificats/certificats:/etc/kafka/secrets
+    ports:
+      - "39092:39092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:32181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL,SSL_HOST:SSL
+      KAFKA_ADVERTISED_LISTENERS: SSL://kafka-ia-broker1:29092,SSL_HOST://localhost:39092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_INTER_BROKER_LISTENER_NAME: SSL
+      KAFKA_SSL_CLIENT_AUTH: required
+      KAFKA_AUTHORIZER.CLASS.NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SSL_PRINCIPAL_MAPPING_RULES: RULE:^CN=(.*?),.*$$/$$1/
+      KAFKA_SUPER_USERS: User:kafka-ia-broker1;User:kafka-ia-client1
+      KAFKA_TOOLS_LOG4J_LOGLEVEL: WARN
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka-ia-broker1.keystore.jks
+      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka-ia.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka-ia.truststore.cred
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka-ia-broker1.keystore.cred
+      KAFKA_SSL_KEY_CREDENTIALS: kafka-ia.ssl.cred
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      KAFKA_LOG4J_LOGGERS: kafka.authorizer.logger=DEBUG
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # In development enviroment, auto-creating topics (and deleting them) could be convenient
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      # Eight partitions is more than enough for development
+      KAFKA_NUM_PARTITIONS: 3
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka-ia-broker1:29092
+      CONFLUENT_METRICS_REPORTER_SECURITY_PROTOCOL: SSL
+      CONFLUENT_METRICS_REPORTER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
+      CONFLUENT_METRICS_REPORTER_SSL_TRUSTSTORE_PASSWORD: soleil1234
+      CONFLUENT_METRICS_REPORTER_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-broker1.keystore.jks
+      CONFLUENT_METRICS_REPORTER_SSL_KEYSTORE_PASSWORD: soleil1234
+      CONFLUENT_METRICS_REPORTER_SSL_KEY_PASSWORD:
+      CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: zookeeper:32181
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      CONFLUENT_METRICS_ENABLE: 'true'
+      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
+  

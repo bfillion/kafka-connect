@@ -1,0 +1,71 @@
+schema-registry:
+    image: confluentinc/cp-schema-registry:5.3.1
+    depends_on:
+      - zookeeper
+      - kafka
+    ports:
+      - "32081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:32181
+
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:5.3.1
+    hostname: control-center
+    container_name: control-center
+    depends_on:
+      - zookeeper
+      - kafka
+      - schema-registry
+      - connect
+      # - ksql-server
+    ports:
+      - "9021:9021"
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka:29092'
+      CONTROL_CENTER_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      CONTROL_CENTER_CONNECT_CLUSTER: 'connect:8083'
+      # CONTROL_CENTER_KSQL_URL: "http://ksql-server:8088"
+      # CONTROL_CENTER_KSQL_ADVERTISED_URL: "http://localhost:8088"
+      CONTROL_CENTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+      CONFLUENT_METRICS_TOPIC_REPLICATION: 1
+      PORT: 9021
+
+  mysql:
+    image: debezium/example-mysql:0.10
+    ports:
+     - 3306:3306
+    environment:
+     - MYSQL_ROOT_PASSWORD=debezium
+     - MYSQL_USER=mysqluser
+     - MYSQL_PASSWORD=mysqlpw
+  
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+  
+  connect:
+    image: debezium/connect:0.10
+    ports:
+     - 8083:8083
+    links:
+     - kafka
+     - mysql
+     - schema-registry
+    environment:
+     - BOOTSTRAP_SERVERS=kafka:29092
+     - GROUP_ID=1
+     - CONFIG_STORAGE_TOPIC=my_connect_configs
+     - OFFSET_STORAGE_TOPIC=my_connect_offsets
+     - STATUS_STORAGE_TOPIC=my_connect_statuses
+     - KEY_CONVERTER=io.confluent.connect.avro.AvroConverter
+     - VALUE_CONVERTER=io.confluent.connect.avro.AvroConverter
+     - INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+     - INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+     - CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081
+     - CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081
