@@ -127,8 +127,8 @@ services:
   connect:
     image: ${DOCKER_REGISTRY-}cp-kafka-connect:5.3.1
     build:
-      context: .
-      dockerfile: connect/Dockerfile
+      context: ./connect
+      dockerfile: Dockerfile
     hostname: connect
     ports:
       - 8083:8083
@@ -162,6 +162,17 @@ services:
       CONNECT_SSL_TRUSTSTORE_PASSWORD: soleil1234
       CONNECT_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-broker1.keystore.jks
       CONNECT_SSL_KEYSTORE_PASSWORD: soleil1234
+      CONNECT_SSL_KEY_PASSWORD: soleil1234
+      #CONNECT_PRODUCER_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
+      #CONNECT_PRODUCER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
+      #CONNECT_PRODUCER_SSL_TRUSTSTORE_PASSWORD: soleil1234
+      #CONNECT_PRODUCER_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-broker1.keystore.jks
+      #CONNECT_PRODUCER_SSL_KEYSTORE_PASSWORD: soleil1234
+      #CONNECT_CONSUMER_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
+      #CONNECT_CONSUMER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
+      #CONNECT_CONSUMER_SSL_TRUSTSTORE_PASSWORD: soleil1234
+      #CONNECT_CONSUMER_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-broker1.keystore.jks
+      #CONNECT_CONSUMER_SSL_KEYSTORE_PASSWORD: soleil1234
 
 
   
