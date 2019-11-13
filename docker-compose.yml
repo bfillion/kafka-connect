@@ -7,13 +7,12 @@ services:
       ZOOKEEPER_CLIENT_PORT: 32181
       ZOOKEEPER_TICK_TIME: 2000
 
-  kafka:
+  kafka-ia-broker1:
     image: confluentinc/cp-enterprise-kafka:5.3.1
     hostname: kafka-ia-broker1
     depends_on:
       - zookeeper
     volumes:
-      #- c:/git/kafka-connect/gen-certificats/certificats:/etc/kafka/secrets
       - ./gen-certificats/certificats:/etc/kafka/secrets
     ports:
       - "39092:39092"
@@ -21,12 +20,12 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:32181'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL,SSL_HOST:SSL
-      KAFKA_ADVERTISED_LISTENERS: SSL://kafka:29092,SSL_HOST://localhost:39092
+      KAFKA_ADVERTISED_LISTENERS: SSL://kafka-ia-broker1:29092,SSL_HOST://localhost:39092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_INTER_BROKER_LISTENER_NAME: SSL
       KAFKA_SSL_CLIENT_AUTH: required
       KAFKA_AUTHORIZER.CLASS.NAME: kafka.security.auth.SimpleAclAuthorizer
-      # KAFKA_SSL_PRINCIPAL_MAPPING_RULES: RULE:^CN=(.*?),.*$$/$$1/
+      KAFKA_SSL_PRINCIPAL_MAPPING_RULES: RULE:^CN=(.*?),.*$$/$$1/
       KAFKA_SUPER_USERS: User:kafka-ia-broker1;User:kafka-ia-client1
       KAFKA_TOOLS_LOG4J_LOGLEVEL: WARN
       KAFKA_SSL_KEYSTORE_FILENAME: kafka-ia-broker1.keystore.jks
@@ -43,7 +42,7 @@ services:
       KAFKA_DELETE_TOPIC_ENABLE: "true"
       # Eight partitions is more than enough for development
       KAFKA_NUM_PARTITIONS: 3
-      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:29092
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka-ia-broker1:29092
       CONFLUENT_METRICS_REPORTER_SECURITY_PROTOCOL: SSL
       CONFLUENT_METRICS_REPORTER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
       CONFLUENT_METRICS_REPORTER_SSL_TRUSTSTORE_PASSWORD: soleil1234
@@ -62,17 +61,16 @@ services:
     container_name: control-center
     depends_on:
       - zookeeper
-      - kafka
+      - kafka-ia-broker1
       - schema-registry
-      # - connect
+      - connect
       # - ksql-server
     volumes:
-      #- c:/git/kafka-connect/gen-certificats/certificats:/etc/kafka/secrets
       - ./gen-certificats/certificats:/etc/kafka/secrets
     ports:
       - "9021:9021"
     environment:
-      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka:29092'
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
       CONTROL_CENTER_ZOOKEEPER_CONNECT: 'zookeeper:32181'
       CONTROL_CENTER_CONNECT_CLUSTER: 'connect:8083'
       # CONTROL_CENTER_KSQL_URL: "http://ksql-server:8088"
@@ -94,15 +92,14 @@ services:
     image: confluentinc/cp-schema-registry:5.3.1
     depends_on:
       - zookeeper
-      - kafka
+      - kafka-ia-broker1
     volumes:
-      #- c:/git/kafka-connect/gen-certificats/certificats:/etc/kafka/secrets
       - ./gen-certificats/certificats:/etc/kafka/secrets
     ports:
       - "32081:8081"
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:29092'
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:32181
       SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: SSL
       SCHEMA_REGISTRY_KAFKASTORE_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
@@ -111,6 +108,21 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-broker1.keystore.jks
       SCHEMA_REGISTRY_KAFKASTORE_SSL_KEYSTORE_PASSWORD: soleil1234
       SCHEMA_REGISTRY_KAFKASTORE_SSL_KEY_PASSWORD: soleil1234
+
+  mysql:
+    image: debezium/example-mysql:0.10
+    ports:
+     - 3306:3306
+    environment:
+     - MYSQL_ROOT_PASSWORD=debezium
+     - MYSQL_USER=mysqluser
+     - MYSQL_PASSWORD=mysqlpw
+  
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
 
   connect:
     image: ${DOCKER_REGISTRY-}cp-kafka-connect:5.3.1
@@ -121,13 +133,13 @@ services:
     ports:
       - 8083:8083
     depends_on:
-      - kafka
+      - kafka-ia-broker1
       - schema-registry
+      - mysql
     volumes:
-      #- c:/git/kafka-connect/gen-certificats/certificats:/etc/kafka/secrets
       - ./gen-certificats/certificats:/etc/kafka/secrets
     environment:
-      CONNECT_BOOTSTRAP_SERVERS: 'kafka:29092'
+      CONNECT_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
       CONNECT_REST_ADVERTISED_HOST_NAME: connect
       CONNECT_PLUGIN_PATH: '/usr/share/java,/usr/share/confluent-hub-components'
       CONNECT_REST_PORT: 8083
@@ -150,7 +162,7 @@ services:
       CONNECT_SSL_TRUSTSTORE_PASSWORD: soleil1234
       CONNECT_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-broker1.keystore.jks
       CONNECT_SSL_KEYSTORE_PASSWORD: soleil1234
-      CONNECT_SSL_KEY_PASSWORD: soleil1234
-      CONNECT_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+
+
   
   
