@@ -26,7 +26,7 @@ services:
       KAFKA_SSL_CLIENT_AUTH: required
       KAFKA_AUTHORIZER.CLASS.NAME: kafka.security.auth.SimpleAclAuthorizer
       KAFKA_SSL_PRINCIPAL_MAPPING_RULES: RULE:^CN=(.*?),.*$$/$$1/
-      KAFKA_SUPER_USERS: User:kafka-ia-broker1;User:kafka-ia-client1
+      KAFKA_SUPER_USERS: User:kafka-ia-broker1;User:kafka-ia-client1;User:kafka-ia-client2
       KAFKA_TOOLS_LOG4J_LOGLEVEL: WARN
       KAFKA_SSL_KEYSTORE_FILENAME: kafka-ia-broker1.keystore.jks
       KAFKA_SSL_TRUSTSTORE_FILENAME: kafka-ia.truststore.jks
@@ -125,7 +125,7 @@ services:
       - 8080:8080
 
   connect:
-    image: ${DOCKER_REGISTRY-}cp-kafka-connect:5.3.1
+    image: ${DOCKER_REGISTRY-}cp-kafka-connect:5.4.0-beta1
     build:
       context: ./connect
       dockerfile: Dockerfile
@@ -139,6 +139,7 @@ services:
     volumes:
       - ./gen-certificats/certificats:/etc/kafka/secrets
     environment:
+      CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
       CONNECT_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
       CONNECT_REST_ADVERTISED_HOST_NAME: connect
       CONNECT_PLUGIN_PATH: '/usr/share/java,/usr/share/confluent-hub-components'
@@ -157,22 +158,38 @@ services:
       CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:32181'
+      CONNECT_LOG4J_ROOT_LOGLEVEL: 'ERROR'
+      CONNECT_LOG4J_LOGGERS: 'org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR'
+      # Config SSL
+      CONNECT_REQUEST_TIMEOUT_MS: "20000"
+      CONNECT_RETRY_BACKOFF_MS: "500"
       CONNECT_SECURITY_PROTOCOL: SSL
+      CONNECT_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
       CONNECT_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
       CONNECT_SSL_TRUSTSTORE_PASSWORD: soleil1234
       CONNECT_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-broker1.keystore.jks
       CONNECT_SSL_KEYSTORE_PASSWORD: soleil1234
       CONNECT_SSL_KEY_PASSWORD: soleil1234
+      # Config producer
       #CONNECT_PRODUCER_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
-      #CONNECT_PRODUCER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
-      #CONNECT_PRODUCER_SSL_TRUSTSTORE_PASSWORD: soleil1234
-      #CONNECT_PRODUCER_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-broker1.keystore.jks
-      #CONNECT_PRODUCER_SSL_KEYSTORE_PASSWORD: soleil1234
+      #CONNECT_PRODUCER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      CONNECT_PRODUCER_SECURITY_PROTOCOL: "SSL"
+      CONNECT_PRODUCER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
+      CONNECT_PRODUCER_SSL_TRUSTSTORE_PASSWORD: soleil1234
+      CONNECT_PRODUCER_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-client1.keystore.jks
+      CONNECT_PRODUCER_SSL_KEYSTORE_PASSWORD: soleil1234
+      CONNECT_PRODUCER_REQUEST_TIMEOUT_MS: "20000"
+      CONNECT_PRODUCER_RETRY_BACKOFF_MS: "500"
+      # Config consumer
       #CONNECT_CONSUMER_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
-      #CONNECT_CONSUMER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
-      #CONNECT_CONSUMER_SSL_TRUSTSTORE_PASSWORD: soleil1234
-      #CONNECT_CONSUMER_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-broker1.keystore.jks
-      #CONNECT_CONSUMER_SSL_KEYSTORE_PASSWORD: soleil1234
+      #CONNECT_CONSUMER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      CONNECT_CONSUMER_SECURITY_PROTOCOL: "SSL"
+      CONNECT_CONSUMER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
+      CONNECT_CONSUMER_SSL_TRUSTSTORE_PASSWORD: soleil1234
+      CONNECT_CONSUMER_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-client2.keystore.jks
+      CONNECT_CONSUMER_SSL_KEYSTORE_PASSWORD: soleil1234
+      CONNECT_CONSUMER_REQUEST_TIMEOUT_MS: "20000"
+      CONNECT_CONSUMER_RETRY_BACKOFF_MS: "500"
 
 
   
