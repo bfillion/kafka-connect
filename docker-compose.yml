@@ -138,6 +138,21 @@ services:
       - mysql
     volumes:
       - ./gen-certificats/certificats:/etc/kafka/secrets
+      - ./scripts:/scripts
+    command: 
+      - bash 
+      - -c 
+      - |
+        /etc/confluent/docker/run & 
+        echo "Waiting for Kafka Connect to start listening on kafka-connect ⏳"
+        while [ $$(curl -s -o /dev/null -w %{http_code} http://connect:8083/connectors) -eq 000 ] ; do 
+          echo -e $$(date) " Kafka Connect listener HTTP state: " $$(curl -s -o /dev/null -w %{http_code} http://connect:8083/connectors) " (waiting for 200)"
+          sleep 5 
+        done
+        nc -vz connect 8083
+        echo -e "\n--\n+> Creating Kafka Connect MySQL Source"
+        /scripts/connectors.sh 
+        sleep infinity
     environment:
       CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
       CONNECT_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
@@ -164,15 +179,12 @@ services:
       CONNECT_REQUEST_TIMEOUT_MS: "20000"
       CONNECT_RETRY_BACKOFF_MS: "500"
       CONNECT_SECURITY_PROTOCOL: SSL
-      CONNECT_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
       CONNECT_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
       CONNECT_SSL_TRUSTSTORE_PASSWORD: soleil1234
       CONNECT_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka-ia-broker1.keystore.jks
       CONNECT_SSL_KEYSTORE_PASSWORD: soleil1234
       CONNECT_SSL_KEY_PASSWORD: soleil1234
       # Config producer
-      #CONNECT_PRODUCER_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
-      #CONNECT_PRODUCER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
       CONNECT_PRODUCER_SECURITY_PROTOCOL: "SSL"
       CONNECT_PRODUCER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
       CONNECT_PRODUCER_SSL_TRUSTSTORE_PASSWORD: soleil1234
@@ -181,8 +193,6 @@ services:
       CONNECT_PRODUCER_REQUEST_TIMEOUT_MS: "20000"
       CONNECT_PRODUCER_RETRY_BACKOFF_MS: "500"
       # Config consumer
-      #CONNECT_CONSUMER_BOOTSTRAP_SERVERS: 'kafka-ia-broker1:29092'
-      #CONNECT_CONSUMER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
       CONNECT_CONSUMER_SECURITY_PROTOCOL: "SSL"
       CONNECT_CONSUMER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka-ia.truststore.jks
       CONNECT_CONSUMER_SSL_TRUSTSTORE_PASSWORD: soleil1234
