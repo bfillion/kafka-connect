@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-connect-01-config
+  namespace: kafka-connect-01
+  labels:
+    k8s-app: cp-kafka-connect
+data:
+  connectors.sh: |
+    echo "Install Mysql Source Connector for inventory db"
+    curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" http://connect:8083/connectors/ -d @/scripts/mysql-avro.json
+
+  mysql-avro.json: |
+    {
+      "name": "inventory-connector",
+      "config": {
+          "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+          "tasks.max": "1",
+          "database.hostname": "mysql",
+          "database.port": "3306",
+          "database.user": "debezium",
+          "database.password": "dbz",
+          "database.server.id": "184054",
+          "database.server.name": "dbserver1",
+          "database.whitelist": "inventory",
+          "database.history.kafka.bootstrap.servers": "SSL://kafka-01-cp-kafka-headless.kafka-01:9092",
+          "database.history.kafka.topic": "schema-changes.inventory",
+          "database.history.producer.security.protocol": "SSL",
+          "database.history.producer.ssl.keystore.location": "/etc/kafka/secrets/connect.keystore.jks",
+          "database.history.producer.ssl.keystore.password": "soleil1234",
+          "database.history.producer.ssl.truststore.location": "/etc/kafka/secrets/connect.truststore.jks",
+          "database.history.producer.ssl.truststore.password": "soleil1234",
+          "database.history.consumer.security.protocol": "SSL",
+          "database.history.consumer.ssl.keystore.location": "/etc/kafka/secrets/connect.keystore.jks",
+          "database.history.consumer.ssl.keystore.password": "soleil1234",
+          "database.history.consumer.ssl.truststore.location": "/etc/kafka/secrets/connect.truststore.jks",
+          "database.history.consumer.ssl.truststore.password": "soleil1234",
+          "key.converter": "io.confluent.connect.avro.AvroConverter",
+          "value.converter": "io.confluent.connect.avro.AvroConverter",
+          "key.converter.schema.registry.url": "http://kafka-01-cp-schema-registry.kafka-01:8081",
+          "value.converter.schema.registry.url": "http://kafka-01-cp-schema-registry.kafka-01:8081"
+      }
+    }
+

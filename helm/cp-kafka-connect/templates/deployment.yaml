@@ -53,6 +53,22 @@ spec:
         {{- end }}
         - name: {{ template "cp-kafka-connect.name" . }}-server
           image: "{{ .Values.image }}:{{ .Values.imageTag }}"
+          {{- if .Values.startup.enabled }}
+          command:
+          - bash 
+          - -c 
+          - |
+            /etc/confluent/docker/run & 
+            echo "Waiting for Kafka Connect to start listening on kafka-connect ⏳"
+            while [ $$(curl -s -o /dev/null -w %{http_code} http://connect:8083/connectors) -eq 000 ] ; do 
+              echo -e $$(date) " Kafka Connect listener HTTP state: " $$(curl -s -o /dev/null -w %{http_code} http://connect:8083/connectors) " (waiting for 200)"
+              sleep 5 
+            done
+            nc -vz connect 8083
+            echo -e "\n--\n+> Creating Kafka Connect MySQL Source"
+            /scripts/{{ .Values.startup.file}} 
+            sleep infinity
+          {{- end }}
           imagePullPolicy: "{{ .Values.imagePullPolicy }}"
           ports:
             - name: kafka-connect
@@ -156,6 +172,15 @@ spec:
             - name: KAFKA_JMX_PORT
               value: "{{ .Values.jmx.port }}"
             {{- end }}
+          volumeMounts:
+          {{- if .Values.ssl.enabled }}
+          - name: secrets-ssl
+            mountPath: "/etc/kafka/secrets"
+          {{- end }}
+          {{- if .Values.startup.enabled }}
+          - name: connect-config
+            mountPath: /script/
+          {{- end }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.imagePullSecrets | indent 8 }}
@@ -165,6 +190,11 @@ spec:
       - name: jmx-config
         configMap:
           name: {{ template "cp-kafka-connect.fullname" . }}-jmx-configmap
+      {{- end }}
+      {{- if .Values.startup.enabled }}
+      - name: connect-config
+        configMap:
+          name: {{ .Values.startup.configmap }}
       {{- end }}
       {{- if .Values.ssl.enabled }}
       - name: secrets-ssl
@@ -181,4 +211,3 @@ spec:
       tolerations:
 {{ toYaml .Values.tolerations | indent 8 }}
       {{- end }}
-      minReadySeconds: 120

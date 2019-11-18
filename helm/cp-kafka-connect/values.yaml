@@ -35,7 +35,7 @@ configurationOverrides:
   "status.storage.replication.factor": "3"
   "log4j.appender.stdout.layout.conversionpattern": "[%d] %p %X{connector.context}%m (%c:%L)%n"
   "log4j.root.loglevel": "ERROR"
-  "log4j.loggers: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"s
+  "log4j.loggers": "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
 
 ## Kafka Connect JVM Heap Option
 heapOptions: "-Xms2G -Xmx2G"
