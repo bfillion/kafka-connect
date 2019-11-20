@@ -105,3 +105,8 @@ ssl:
   truststoreCreds: ""
   keystore: ""
   keystoreCreds: ""
+
+startup:
+  enabled: false
+  secretName: kafka-connect-secret
+  file: connectors.sh

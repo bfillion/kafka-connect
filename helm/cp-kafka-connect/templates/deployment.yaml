@@ -60,16 +60,28 @@ spec:
           - |
             /etc/confluent/docker/run & 
             echo "Waiting for Kafka Connect to start listening on kafka-connect ⏳"
-            while [ $$(curl -s -o /dev/null -w %{http_code} http://connect:8083/connectors) -eq 000 ] ; do 
-              echo -e $$(date) " Kafka Connect listener HTTP state: " $$(curl -s -o /dev/null -w %{http_code} http://connect:8083/connectors) " (waiting for 200)"
+            while [ $$(curl -s -o /dev/null -w %{http_code} http://localhost:8083/connectors) -eq 000 ] ; do 
+              echo -e $$(date) " Kafka Connect listener HTTP state: " $$(curl -s -o /dev/null -w %{http_code} http://localhost:8083/connectors) " (waiting for 200)"
               sleep 5 
             done
-            nc -vz connect 8083
+            nc -vz localhost 8083
             echo -e "\n--\n+> Creating Kafka Connect MySQL Source"
             /scripts/{{ .Values.startup.file}} 
             sleep infinity
           {{- end }}
           imagePullPolicy: "{{ .Values.imagePullPolicy }}"
+          readinessProbe:
+            httpGet:
+              path: /connectors
+              port: 8083
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /connectors
+              port: 8083
+            initialDelaySeconds: 120
+            periodSeconds: 10
           ports:
             - name: kafka-connect
               containerPort: {{ .Values.servicePort}}
@@ -107,6 +119,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.ssl.secretName }}
                   key: {{ .Values.ssl.keystoreCreds }}
+            - name: CONNECT_SSL_KEY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ssl.secretName }}
+                  key: {{ .Values.ssl.keystoreCreds }}
             # SSL Producer
             - name: CONNECT_PRODUCER_SECURITY_PROTOCOL
               value: "SSL"
@@ -126,6 +143,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.ssl.secretName }}
                   key: {{ .Values.ssl.keystoreCreds }}
+            - name: CONNECT_PRODUCER_SSL_KEY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ssl.secretName }}
+                  key: {{ .Values.ssl.keystoreCreds }}
             # SSL Consumer
             - name: CONNECT_CONSUMER_SECURITY_PROTOCOL
               value: "SSL"
@@ -141,6 +163,11 @@ spec:
             - name: CONNECT_CONSUMER_SSL_KEYSTORE_LOCATION
               value: "/etc/kafka/secrets/{{ .Values.ssl.keystore }}"
             - name: CONNECT_CONSUMER_SSL_KEYSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ssl.secretName }}
+                  key: {{ .Values.ssl.keystoreCreds }}
+            - name: CONNECT_CONSUMER_SSL_KEY_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.ssl.secretName }}
@@ -178,8 +205,8 @@ spec:
             mountPath: "/etc/kafka/secrets"
           {{- end }}
           {{- if .Values.startup.enabled }}
-          - name: connect-config
-            mountPath: /script/
+          - name: connect-secret
+            mountPath: /scripts/
           {{- end }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -192,9 +219,10 @@ spec:
           name: {{ template "cp-kafka-connect.fullname" . }}-jmx-configmap
       {{- end }}
       {{- if .Values.startup.enabled }}
-      - name: connect-config
-        configMap:
-          name: {{ .Values.startup.configmap }}
+      - name: connect-secret
+        secret:
+          secretName: {{ .Values.startup.secretName }}
+          defaultMode: 0777
       {{- end }}
       {{- if .Values.ssl.enabled }}
       - name: secrets-ssl
